@@ -23,6 +23,10 @@ internal sealed partial class OptionPickerForm : Form
 
     private void BlockedOnlyCheckBox_CheckedChanged(object? sender, EventArgs e) => RefreshList();
 
+    // 열이 하나뿐이라 창 너비에 맞춰 옵션 열을 늘린다
+    private void OptionListView_Resize(object? sender, EventArgs e) =>
+        optionColumn.Width = Math.Max(100, optionListView.ClientSize.Width);
+
     private void OptionListView_ItemChecked(object? sender, ItemCheckedEventArgs e)
     {
         if (_refreshing || e.Item.Tag is not SeenOption option || option.Blocked == e.Item.Checked)
@@ -50,6 +54,7 @@ internal sealed partial class OptionPickerForm : Form
         var options = _collector.Options
             .Where(o => !blockedOnlyCheckBox.Checked || o.Blocked)
             .Where(o => query.Length == 0 || o.CompactText.Contains(query, StringComparison.OrdinalIgnoreCase))
+            // 본 횟수는 표시하지 않지만, 자주 나오는 옵션이 위에 오도록 정렬에는 쓴다
             .OrderByDescending(o => o.Count)
             .ThenBy(o => o.Text, StringComparer.Ordinal);
 
@@ -60,10 +65,7 @@ internal sealed partial class OptionPickerForm : Form
             optionListView.Items.Clear();
             foreach (var option in options)
             {
-                var item = new ListViewItem(option.Text) { Checked = option.Blocked, Tag = option };
-                item.SubItems.Add(option.Count.ToString());
-                item.SubItems.Add(option.LastSeen);
-                optionListView.Items.Add(item);
+                optionListView.Items.Add(new ListViewItem(option.Text) { Checked = option.Blocked, Tag = option });
             }
         }
         finally

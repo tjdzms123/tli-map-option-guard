@@ -32,8 +32,6 @@ namespace MapOptionGuard
             this.blockedOnlyCheckBox = new System.Windows.Forms.CheckBox();
             this.optionListView = new System.Windows.Forms.ListView();
             this.optionColumn = new System.Windows.Forms.ColumnHeader();
-            this.countColumn = new System.Windows.Forms.ColumnHeader();
-            this.lastSeenColumn = new System.Windows.Forms.ColumnHeader();
             this.summaryLabel = new System.Windows.Forms.Label();
             this.rootLayout.SuspendLayout();
             this.searchLayout.SuspendLayout();
@@ -96,9 +94,7 @@ namespace MapOptionGuard
             //
             this.optionListView.CheckBoxes = true;
             this.optionListView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.optionColumn,
-            this.countColumn,
-            this.lastSeenColumn});
+            this.optionColumn});
             this.optionListView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.optionListView.FullRowSelect = true;
             this.optionListView.GridLines = true;
@@ -108,22 +104,12 @@ namespace MapOptionGuard
             this.optionListView.UseCompatibleStateImageBehavior = false;
             this.optionListView.View = System.Windows.Forms.View.Details;
             this.optionListView.ItemChecked += new System.Windows.Forms.ItemCheckedEventHandler(this.OptionListView_ItemChecked);
+            this.optionListView.Resize += new System.EventHandler(this.OptionListView_Resize);
             //
             // optionColumn
             //
             this.optionColumn.Text = "옵션 (체크하면 거름)";
-            this.optionColumn.Width = 640;
-            //
-            // countColumn
-            //
-            this.countColumn.Text = "본 횟수";
-            this.countColumn.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-            this.countColumn.Width = 80;
-            //
-            // lastSeenColumn
-            //
-            this.lastSeenColumn.Text = "마지막으로 본 때";
-            this.lastSeenColumn.Width = 150;
+            this.optionColumn.Width = 895;
             //
             // summaryLabel
             //
@@ -161,8 +147,6 @@ namespace MapOptionGuard
         private System.Windows.Forms.CheckBox blockedOnlyCheckBox;
         private System.Windows.Forms.ListView optionListView;
         private System.Windows.Forms.ColumnHeader optionColumn;
-        private System.Windows.Forms.ColumnHeader countColumn;
-        private System.Windows.Forms.ColumnHeader lastSeenColumn;
         private System.Windows.Forms.Label summaryLabel;
     }
 }

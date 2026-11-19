@@ -37,6 +37,8 @@ internal sealed class AppConfig
     public RelativeRect OptionRegion { get; set; } = DefaultOptionRegion();
     public RelativeRect ResetButtonRegion { get; set; } = DefaultResetButtonRegion();
     public List<string> BlockedKeywords { get; set; } = ["실명", "마비"];
+    // 맵 보상(드롭 수량 등)이라 거를 옵션 후보로 모으지 않을 키워드
+    public List<string> RewardKeywords { get; set; } = ["드롭 수량"];
     public string BoxColor { get; set; } = "#FF2020";
     public int BoxThickness { get; set; } = 4;
     public bool CollectOptions { get; set; } = true;
@@ -81,12 +83,16 @@ internal sealed class AppConfig
         PanelAnchor ??= "";
         OptionRegion ??= DefaultOptionRegion();
         ResetButtonRegion ??= DefaultResetButtonRegion();
-        BlockedKeywords = BlockedKeywords?.Where(k => !string.IsNullOrWhiteSpace(k)).ToList() ?? [];
+        BlockedKeywords = RemoveEmptyKeywords(BlockedKeywords);
+        RewardKeywords = RemoveEmptyKeywords(RewardKeywords);
         BoxColor ??= "#FF2020";
         IntervalMs = Math.Clamp(IntervalMs, 200, 5000);
         OcrScale = Math.Clamp(OcrScale, 1.0, 4.0);
         BoxThickness = Math.Clamp(BoxThickness, 1, 20);
     }
+
+    private static List<string> RemoveEmptyKeywords(List<string>? keywords) =>
+        keywords?.Where(k => !string.IsNullOrWhiteSpace(k)).ToList() ?? [];
 
     /// <summary>앞뒤 공백과 끝의 .exe를 떼어 Process.ProcessName과 비교할 수 있는 형태로 만든다.</summary>
     public static string NormalizeProcessName(string? processName)

@@ -86,7 +86,7 @@ internal static class SelfTest
             report.AppendLine().AppendLine("[옵션으로 나눈 결과]");
             foreach (var option in OptionLineParser.SplitOptions(lines, config.PanelAnchor, config.FuzzyMatch))
             {
-                report.AppendLine("  - " + option);
+                report.AppendLine("  - " + option + (guard.IsRewardOption(option) ? "  (보상 옵션, 모으지 않음)" : ""));
             }
 
             var preparedPath = Path.Combine(outputDir, "selftest_ocr.png");

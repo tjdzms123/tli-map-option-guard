@@ -34,15 +34,26 @@ internal sealed record ScanResult(
 internal sealed class OptionGuard : IDisposable
 {
     private readonly OptionScanner _scanner;
+    private AppConfig _config;
 
     public OptionGuard(AppConfig config, OptionScanner scanner, OptionCollector collector)
     {
-        Config = config;
         _scanner = scanner;
         Collector = collector;
+        _config = config;
+        RemoveCollectedRewardOptions();
     }
 
-    public AppConfig Config { get; set; }
+    /// <summary>바꾸면 이미 모아 둔 옵션 중 보상 옵션도 거를 옵션 후보에서 뺀다.</summary>
+    public AppConfig Config
+    {
+        get => _config;
+        set
+        {
+            _config = value;
+            RemoveCollectedRewardOptions();
+        }
+    }
 
     public OptionCollector Collector { get; }
 
@@ -109,14 +120,27 @@ internal sealed class OptionGuard : IDisposable
 
     public bool SaveLastImage(string path) => _scanner.SaveLastImage(path);
 
+    /// <summary>드롭 수량처럼 거를 대상이 아닌 맵 보상 옵션인지.</summary>
+    public bool IsRewardOption(string optionText)
+    {
+        var compact = KeywordMatcher.RemoveWhitespace(optionText);
+        return _config.RewardKeywords.Any(keyword => KeywordMatcher.Contains(compact, keyword, _config.FuzzyMatch));
+    }
+
     public void Dispose() => _scanner.Dispose();
+
+    // 보상 키워드를 추가하기 전에 모아 둔 옵션도 목록에서 빠지도록 한다
+    private void RemoveCollectedRewardOptions() => Collector.RemoveUnblocked(IsRewardOption);
 
     // 수집 파일 저장이 실패해도 거르기 판정은 계속되도록 오류는 메시지로만 돌려준다
     private string? TryCollect(IReadOnlyList<string> lines, AppConfig config)
     {
         try
         {
-            Collector.Record(OptionLineParser.SplitOptions(lines, config.PanelAnchor, config.FuzzyMatch));
+            var options = OptionLineParser.SplitOptions(lines, config.PanelAnchor, config.FuzzyMatch)
+                .Where(option => !IsRewardOption(option))
+                .ToList();
+            Collector.Record(options);
             return null;
         }
         catch (Exception ex)

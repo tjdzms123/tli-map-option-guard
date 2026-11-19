@@ -70,6 +70,13 @@ internal sealed class OptionCollector
 
     public IEnumerable<string> GetBlockedTexts() => _options.Where(o => o.Blocked).Select(o => o.Text);
 
+    /// <summary>
+    /// 거르기로 고르지 않은 옵션 중 조건에 맞는 것을 목록에서 뺀다.
+    /// 파일에는 다음 저장 때 반영된다. 이미 거르기로 고른 옵션은 사용자가 정한 것이라 남긴다.
+    /// </summary>
+    public void RemoveUnblocked(Func<string, bool> shouldRemove) =>
+        _options.RemoveAll(o => !o.Blocked && shouldRemove(o.Text));
+
     public void Save() => JsonFileStore.Save(FilePath, _options);
 
     /// <summary>옵션 창 하나에서 읽은 옵션들을 기록한다.</summary>

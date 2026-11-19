@@ -6,9 +6,20 @@ namespace MapOptionGuard;
 /// <summary>한 번이라도 본 맵 기본 옵션. Blocked가 켜진 옵션이 보이면 초기화를 권장한다.</summary>
 internal sealed class SeenOption
 {
+    private string _text = "";
     private string? _compactText;
 
-    public string Text { get; set; } = "";
+    /// <summary>바꾸면 띄어쓰기를 뺀 글자(CompactText)도 다시 만든다. 선택 창에서 글자를 고칠 때 바뀐다.</summary>
+    public string Text
+    {
+        get => _text;
+        set
+        {
+            _text = value;
+            _compactText = null;
+        }
+    }
+
     public int Count { get; set; }
     public string FirstSeen { get; set; } = "";
     public string LastSeen { get; set; } = "";
@@ -73,6 +84,9 @@ internal sealed class OptionCollector
     public void RemoveUnblocked(Func<string, bool> shouldRemove) =>
         _options.RemoveAll(o => !o.Blocked && shouldRemove(o.Text));
 
+    /// <summary>사용자가 고른 옵션을 목록에서 뺀다. 거르기로 고른 옵션이어도 뺀다. 파일에는 다음 저장 때 반영된다.</summary>
+    public void Remove(IReadOnlyCollection<SeenOption> options) => _options.RemoveAll(o => options.Contains(o));
+
     public void Save() => JsonFileStore.Save(FilePath, _options);
 
     /// <summary>
@@ -116,25 +130,50 @@ internal sealed class OptionCollector
             if (same is null)
             {
                 merged.Add(option);
-                continue;
             }
-
-            same.Count += option.Count;
-            same.Blocked |= option.Blocked;
-            // 시간은 yyyy-MM-dd HH:mm 형식이라 글자 순서가 곧 시간 순서다
-            if (option.FirstSeen.Length > 0 && string.CompareOrdinal(option.FirstSeen, same.FirstSeen) < 0)
+            else
             {
-                same.FirstSeen = option.FirstSeen;
-            }
-
-            if (string.CompareOrdinal(option.LastSeen, same.LastSeen) > 0)
-            {
-                same.LastSeen = option.LastSeen;
+                Absorb(same, option);
             }
         }
 
         _options.Clear();
         _options.AddRange(merged);
+    }
+
+    /// <summary>
+    /// target과 비슷한 다른 옵션을 target 하나로 합친다. 선택 창에서 고친 글자가 남도록 target의 글자를 쓴다.
+    /// 파일에는 다음 저장 때 반영된다.
+    /// </summary>
+    /// <returns>합쳐서 없어진 옵션 수</returns>
+    public int MergeInto(SeenOption target, double minSimilarity)
+    {
+        var similar = _options
+            .Where(o => o != target && KeywordMatcher.IsSimilar(o.CompactText, target.CompactText, minSimilarity))
+            .ToList();
+        foreach (var option in similar)
+        {
+            Absorb(target, option);
+        }
+
+        return _options.RemoveAll(o => similar.Contains(o));
+    }
+
+    // 같은 옵션으로 본 source의 기록을 target에 더한다. 어느 한쪽이라도 거르기로 골랐으면 거른다.
+    private static void Absorb(SeenOption target, SeenOption source)
+    {
+        target.Count += source.Count;
+        target.Blocked |= source.Blocked;
+        // 시간은 yyyy-MM-dd HH:mm 형식이라 글자 순서가 곧 시간 순서다
+        if (source.FirstSeen.Length > 0 && string.CompareOrdinal(source.FirstSeen, target.FirstSeen) < 0)
+        {
+            target.FirstSeen = source.FirstSeen;
+        }
+
+        if (string.CompareOrdinal(source.LastSeen, target.LastSeen) > 0)
+        {
+            target.LastSeen = source.LastSeen;
+        }
     }
 
     private static SeenOption? FindSimilar(List<SeenOption> options, string compactText, double minSimilarity) =>

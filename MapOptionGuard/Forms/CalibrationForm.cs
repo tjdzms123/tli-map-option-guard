@@ -3,7 +3,7 @@ using System.Drawing.Drawing2D;
 namespace MapOptionGuard;
 
 /// <summary>
-/// 게임 화면 캡처 위에서 옵션 영역 → 초기화 버튼 순서로 드래그해 위치를 지정받는 창.
+/// 게임 화면 캡처 위에서 옵션 영역 → 초기화 버튼 → 포탈 개방 버튼 순서로 드래그해 위치를 지정받는 창.
 /// 창은 게임 클라이언트 영역과 같은 위치·크기로 뜨므로 창 안 좌표가 곧 클라이언트 좌표다.
 /// 화면을 직접 그리는 창이라 VS에서 디자이너 대신 코드 보기로 열리게 한다.
 /// </summary>
@@ -15,11 +15,13 @@ internal sealed class CalibrationForm : Form
 
     private static readonly string[] StepGuides =
     [
-        "1/2  '기본 옵션' 제목부터 마지막 옵션 줄까지 드래그하세요",
-        "2/2  '옵션 초기화' 버튼을 드래그하세요",
+        // 옵션 아래 빈 공간까지 잡아야 목록 끝이 보이는지(아래에 옵션이 더 없는지) 알 수 있다
+        "1/3  '기본 옵션' 제목부터 옵션 창 맨 아래(빈 공간 포함)까지 드래그하세요",
+        "2/3  '옵션 초기화' 버튼을 드래그하세요",
+        "3/3  '포탈 개방' 버튼을 드래그하세요",
     ];
 
-    private static readonly Color[] StepColors = [Color.Cyan, Color.Red];
+    private static readonly Color[] StepColors = [Color.Cyan, Color.Red, Color.Lime];
 
     private readonly Bitmap _screenshot;
     private readonly Rectangle[] _selections = new Rectangle[StepGuides.Length];
@@ -45,6 +47,8 @@ internal sealed class CalibrationForm : Form
     public Rectangle OptionRect => _selections[0];
 
     public Rectangle ResetButtonRect => _selections[1];
+
+    public Rectangle PortalButtonRect => _selections[2];
 
     protected override void OnShown(EventArgs e)
     {

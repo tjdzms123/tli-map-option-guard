@@ -36,12 +36,16 @@ internal sealed class AppConfig
     public string PanelAnchor { get; set; } = "기본 옵션";
     public RelativeRect OptionRegion { get; set; } = DefaultOptionRegion();
     public RelativeRect ResetButtonRegion { get; set; } = DefaultResetButtonRegion();
+    // 거를 옵션이 없을 때 초록 네모를 띄울 '포탈 개방' 버튼 영역
+    public RelativeRect PortalButtonRegion { get; set; } = DefaultPortalButtonRegion();
     public List<string> BlockedKeywords { get; set; } = ["실명", "마비"];
     // 맵 보상(드롭 수량 등)이라 거를 옵션 후보로 모으지 않을 키워드
     public List<string> RewardKeywords { get; set; } = ["드롭 수량"];
     // 띄어쓰기를 뺀 글자가 이 비율 이상 같으면 같은 옵션으로 본다(0.5~1.0). 모으기·스크롤 기억·거르기 판정에 쓴다.
     public double SameOptionSimilarity { get; set; } = 0.8;
     public string BoxColor { get; set; } = "#FF2020";
+    // 포탈 개방 버튼에 띄우는 '거를 옵션 없음' 네모 색
+    public string OkBoxColor { get; set; } = "#20C040";
     public int BoxThickness { get; set; } = 4;
     public bool CollectOptions { get; set; } = true;
 
@@ -65,15 +69,20 @@ internal sealed class AppConfig
 
     public void Save() => JsonFileStore.Save(FilePath, this);
 
-    public Color GetBoxColor()
+    public Color GetBoxColor() => ParseColor(BoxColor, Color.Red);
+
+    public Color GetOkBoxColor() => ParseColor(OkBoxColor, Color.LimeGreen);
+
+    // 색 이름이나 #RRGGBB를 읽고, 잘못 적었으면 기본 색을 쓴다
+    private static Color ParseColor(string text, Color fallback)
     {
         try
         {
-            return ColorTranslator.FromHtml(BoxColor);
+            return ColorTranslator.FromHtml(text);
         }
         catch (Exception)
         {
-            return Color.Red;
+            return fallback;
         }
     }
 
@@ -85,9 +94,11 @@ internal sealed class AppConfig
         PanelAnchor ??= "";
         OptionRegion ??= DefaultOptionRegion();
         ResetButtonRegion ??= DefaultResetButtonRegion();
+        PortalButtonRegion ??= DefaultPortalButtonRegion();
         BlockedKeywords = RemoveEmptyKeywords(BlockedKeywords);
         RewardKeywords = RemoveEmptyKeywords(RewardKeywords);
         BoxColor ??= "#FF2020";
+        OkBoxColor ??= "#20C040";
         IntervalMs = Math.Clamp(IntervalMs, 200, 5000);
         OcrScale = Math.Clamp(OcrScale, 1.0, 4.0);
         SameOptionSimilarity = Math.Clamp(SameOptionSimilarity, 0.5, 1.0);
@@ -108,4 +119,7 @@ internal sealed class AppConfig
     private static RelativeRect DefaultOptionRegion() => new() { X = 0.038, Y = 0.270, Width = 0.172, Height = 0.418 };
 
     private static RelativeRect DefaultResetButtonRegion() => new() { X = 0.042, Y = 0.714, Width = 0.079, Height = 0.034 };
+
+    // 맵 화면 오른쪽 아래 '포탈 개방' 버튼 대략값
+    private static RelativeRect DefaultPortalButtonRegion() => new() { X = 0.885, Y = 0.909, Width = 0.094, Height = 0.043 };
 }

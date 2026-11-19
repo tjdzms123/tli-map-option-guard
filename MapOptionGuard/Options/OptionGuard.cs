@@ -11,6 +11,10 @@ internal enum ScanState
 }
 
 /// <summary>검사 한 번의 결과. 화면 표시와 오버레이 판단에 쓴다.</summary>
+/// <param name="ResetButtonRect">걸린 옵션이 있을 때 빨간 네모를 띄울 초기화 버튼 위치(화면 좌표)</param>
+/// <param name="PortalButtonRect">
+/// 거를 옵션이 없고 옵션 목록 끝까지 보였을 때만 초록 네모를 띄울 포탈 개방 버튼 위치. 아니면 비어 있다.
+/// </param>
 internal sealed record ScanResult(
     ScanState State,
     string Message,
@@ -18,14 +22,15 @@ internal sealed record ScanResult(
     Rectangle GameClient,
     string OcrText,
     IReadOnlyList<string> Blocked,
-    Rectangle ResetButtonRect)
+    Rectangle ResetButtonRect,
+    Rectangle PortalButtonRect)
 {
     /// <summary>OCR까지 실제로 돌았는지. 아니면 OcrText가 비어 있다.</summary>
     public bool RanOcr => State is ScanState.PanelClosed or ScanState.Clean or ScanState.Blocked;
 
     public static ScanResult Skipped(ScanState state, string message, GameWindow? game = null,
         Rectangle gameClient = default) =>
-        new(state, message, game?.ProcessName ?? "", gameClient, "", [], Rectangle.Empty);
+        new(state, message, game?.ProcessName ?? "", gameClient, "", [], Rectangle.Empty, Rectangle.Empty);
 }
 
 /// <summary>
@@ -89,10 +94,10 @@ internal sealed class OptionGuard : IDisposable
     /// 옵션이 많으면 창을 내려야 다 보이므로, 이 옵션 창에서 스크롤하며 본 옵션도 기억해 함께 판정한다.
     /// 진단 모드가 저장해 둔 캡처 이미지를 읽을 때도 같은 판정을 쓴다.
     /// </summary>
-    public ScanResult Analyze(IReadOnlyList<string> lines, string processName, Rectangle client)
+    public ScanResult Analyze(IReadOnlyList<OcrTextLine> lines, string processName, Rectangle client)
     {
         var config = Config;
-        var ocrText = string.Join("\n", lines);
+        var ocrText = string.Join("\n", lines.Select(line => line.Text));
         var compactText = KeywordMatcher.RemoveWhitespace(ocrText);
         bool panelVisible = string.IsNullOrWhiteSpace(config.PanelAnchor)
                             || KeywordMatcher.Contains(compactText, config.PanelAnchor, config.FuzzyMatch);
@@ -100,17 +105,22 @@ internal sealed class OptionGuard : IDisposable
         {
             return new ScanResult(ScanState.PanelClosed,
                 $"'{config.PanelAnchor}' 제목이 보이지 않아 옵션 창이 닫힌 것으로 봤습니다.",
-                processName, client, ocrText, [], Rectangle.Empty);
+                processName, client, ocrText, [], Rectangle.Empty, Rectangle.Empty);
         }
 
         var visibleOptions = OptionLineParser.SplitOptions(lines, config.PanelAnchor, config.FuzzyMatch)
-            .Where(option => !IsRewardOption(option))
+            .Where(option => !IsRewardOption(option.Text))
             .ToList();
+        // 잘렸을 수 있거나 깨지게 읽힌 옵션은 모으지 않지만, 거르기 판정에는 보이는 옵션을 모두 쓴다
         var newOptions = _panelMemory.Update(visibleOptions, config.SameOptionSimilarity);
         var collectError = config.CollectOptions ? TryCollect(newOptions, config) : null;
-        var blocked = FindBlocked(compactText, visibleOptions, config);
+        var blocked = FindBlocked(compactText, visibleOptions.Select(option => option.Text), config);
 
-        var message = blocked.Count > 0 ? "걸린 옵션: " + string.Join(", ", blocked) : "걸린 옵션 없음";
+        // 아래에 안 보인 옵션이 남아 있으면 '거를 옵션 없음'이라고 할 수 없으므로, 목록 끝이 보일 때만 포탈 버튼에 표시한다
+        bool safeToOpen = blocked.Count == 0 && IsListEndVisible(lines, visibleOptions);
+        var message = blocked.Count > 0 ? "걸린 옵션: " + string.Join(", ", blocked)
+            : safeToOpen ? "걸린 옵션 없음"
+            : "걸린 옵션 없음 · 아래 옵션이 더 있을 수 있어 포탈 버튼에는 표시하지 않음";
         if (_panelMemory.Count > 0)
         {
             message += $" · 기억한 옵션 {_panelMemory.Count}개";
@@ -122,11 +132,16 @@ internal sealed class OptionGuard : IDisposable
         }
 
         return new ScanResult(blocked.Count > 0 ? ScanState.Blocked : ScanState.Clean, message,
-            processName, client, ocrText, blocked, config.ResetButtonRegion.ToScreen(client));
+            processName, client, ocrText, blocked, config.ResetButtonRegion.ToScreen(client),
+            safeToOpen ? config.PortalButtonRegion.ToScreen(client) : Rectangle.Empty);
     }
 
+    // 맨 아래 옵션이 잘리지 않았고 그 아래가 비어 있으면, 옵션 목록 끝까지 보인 것으로 본다
+    private static bool IsListEndVisible(IReadOnlyList<OcrTextLine> lines, List<ParsedOption> visibleOptions) =>
+        lines.Count > 0 && lines[^1].HasSpaceBelow && visibleOptions.Count > 0 && visibleOptions[^1].IsComplete;
+
     /// <summary>이미 가진 이미지를 OCR한다(진단 모드용).</summary>
-    public Task<IReadOnlyList<string>> ReadLinesAsync(Bitmap image) => _scanner.ReadLinesAsync(image, Config.OcrScale);
+    public Task<IReadOnlyList<OcrTextLine>> ReadLinesAsync(Bitmap image) => _scanner.ReadLinesAsync(image, Config.OcrScale);
 
     public bool SaveLastImage(string path) => _scanner.SaveLastImage(path);
 
@@ -143,7 +158,7 @@ internal sealed class OptionGuard : IDisposable
     /// 직접 적은 키워드는 글자가 들어 있는지로, 거르기로 고른 옵션은 비슷한 옵션이 있는지로 찾는다.
     /// 지금 보이는 글자와 이 옵션 창에서 기억한 옵션을 함께 본다.
     /// </summary>
-    private List<string> FindBlocked(string compactText, IReadOnlyList<string> visibleOptions, AppConfig config)
+    private List<string> FindBlocked(string compactText, IEnumerable<string> visibleOptions, AppConfig config)
     {
         var searchText = compactText + "|" + _panelMemory.CompactText;
         var seenOptions = visibleOptions.Select(KeywordMatcher.RemoveWhitespace)
@@ -161,10 +176,11 @@ internal sealed class OptionGuard : IDisposable
             .ToList();
     }
 
-    // 설정을 바꾸기 전에 모아 둔 옵션도 지금 설정(보상 키워드, 같은 옵션 기준)에 맞춘다
+    // 예전에 모아 둔 옵션도 지금 기준(보상 키워드, 깨진 글자, 같은 옵션 기준)에 맞춘다
     private void CleanUpCollectedOptions()
     {
         Collector.RemoveUnblocked(IsRewardOption);
+        Collector.RemoveUnblocked(text => !OptionLineParser.IsCleanText(text));
         Collector.MergeSimilar(_config.SameOptionSimilarity);
     }
 

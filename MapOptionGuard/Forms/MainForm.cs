@@ -40,7 +40,7 @@ internal sealed partial class MainForm : Form
 
         _config = config;
         _guard = new OptionGuard(config, scanner, collector);
-        _overlay = new OverlayForm(config.GetBoxColor(), config.BoxThickness);
+        _overlay = new OverlayForm(config.GetBoxColor(), config.GetOkBoxColor(), config.BoxThickness);
 
         ApplyConfigToUi();
         ShowNotice(AppConfig.FilePath);
@@ -160,6 +160,7 @@ internal sealed partial class MainForm : Form
 
             _config.OptionRegion = RelativeRect.FromClient(form.OptionRect, client.Size);
             _config.ResetButtonRegion = RelativeRect.FromClient(form.ResetButtonRect, client.Size);
+            _config.PortalButtonRegion = RelativeRect.FromClient(form.PortalButtonRect, client.Size);
             TrySaveConfig("영역을 저장했습니다.");
         }
         catch (Exception ex)
@@ -234,7 +235,7 @@ internal sealed partial class MainForm : Form
             return;
         }
 
-        _pickerForm = new OptionPickerForm(_guard.Collector);
+        _pickerForm = new OptionPickerForm(_guard.Collector, () => _guard.Config.SameOptionSimilarity);
         _pickerForm.FormClosed += (_, _) => UpdateCollectSummary();
         _pickerForm.Show(this);
     }
@@ -257,7 +258,7 @@ internal sealed partial class MainForm : Form
         {
             _config = AppConfig.LoadOrCreate();
             _guard.Config = _config;
-            _overlay.SetStyle(_config.GetBoxColor(), _config.BoxThickness);
+            _overlay.SetStyle(_config.GetBoxColor(), _config.GetOkBoxColor(), _config.BoxThickness);
             ApplyConfigToUi();
             HideOverlay();
             ShowNotice("설정을 다시 불러왔습니다.");
@@ -292,7 +293,12 @@ internal sealed partial class MainForm : Form
         {
             case ScanState.Blocked:
                 _missCount = 0;
-                _overlay.ShowAround(result.ResetButtonRect, result.Blocked);
+                _overlay.ShowResetWarning(result.ResetButtonRect, result.Blocked);
+                break;
+            case ScanState.Clean when !result.PortalButtonRect.IsEmpty:
+                // 옵션 목록 끝까지 봤고 거를 옵션이 없다
+                _missCount = 0;
+                _overlay.ShowPortalOk(result.PortalButtonRect);
                 break;
             case ScanState.Clean:
             case ScanState.PanelClosed:

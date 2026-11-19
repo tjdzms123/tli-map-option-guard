@@ -30,14 +30,17 @@ internal sealed class PanelOptionMemory
     /// 이번 검사에서 보인 옵션들을 반영한다. 스크롤 중인 화면을 피하려고 두 번 연속 같게 읽힌 화면만 쓴다.
     /// </summary>
     /// <param name="minSimilarity">이 비율 이상 비슷하면 같은 옵션으로 본다</param>
-    /// <returns>이 옵션 창에서 처음 본 옵션. 창 가장자리에서 잘려 보이던 옵션이 온전히 보이게 된 경우도 포함한다.</returns>
-    public IReadOnlyList<string> Update(IEnumerable<string> visibleOptions, double minSimilarity)
+    /// <returns>
+    /// 이 옵션 창에서 처음으로 온전히 보인 옵션(모아도 되는 옵션). 창 가장자리에서 잘려 보이던 옵션이
+    /// 스크롤해서 다 보이게 된 경우도 포함한다.
+    /// </returns>
+    public IReadOnlyList<string> Update(IEnumerable<ParsedOption> visibleOptions, double minSimilarity)
     {
         var window = visibleOptions
-            .Select(text => new PanelOption(text.Trim()))
+            .Select(option => new PanelOption(option.Text.Trim(), option.CanCollect))
             .Where(option => option.Compact.Length >= MinOptionLength)
             .ToList();
-        var signature = string.Join("|", window.Select(option => option.Compact));
+        var signature = string.Join("|", window.Select(option => (option.CanCollect ? "+" : "-") + option.Compact));
         bool isStable = signature == _pendingSignature;
         _pendingSignature = signature;
         if (!isStable || window.Count == 0 || signature == _appliedSignature)
@@ -56,8 +59,11 @@ internal sealed class PanelOptionMemory
     {
         _options.Clear();
         _options.AddRange(window);
-        return window.Select(option => option.Text).ToList();
+        return CollectableTexts(window);
     }
+
+    private static List<string> CollectableTexts(IEnumerable<PanelOption> options) =>
+        options.Where(option => option.CanCollect).Select(option => option.Text).ToList();
 
     /// <summary>
     /// window[i]가 기억한 목록의 _options[i + shift]에 해당하는 shift를 찾는다.
@@ -97,35 +103,51 @@ internal sealed class PanelOptionMemory
             // 위로 올려서 새로 보인 옵션을 앞에 붙이면, window[i]가 _options[i]에 해당하게 된다
             var above = window.Take(-shift).ToList();
             _options.InsertRange(0, above);
-            added.AddRange(above.Select(option => option.Text));
+            added.AddRange(CollectableTexts(above));
             shift = 0;
         }
 
         for (int i = 0; i < window.Count; i++)
         {
             int index = i + shift;
+            var incoming = window[i];
             if (index >= _options.Count)
             {
                 // 아래로 내려서 새로 보인 옵션
-                _options.Add(window[i]);
-                added.Add(window[i].Text);
+                _options.Add(incoming);
+                if (incoming.CanCollect)
+                {
+                    added.Add(incoming.Text);
+                }
+
+                continue;
             }
-            else if (window[i].Compact.Length > _options[index].Compact.Length)
+
+            var remembered = _options[index];
+            if (incoming.CanCollect && !remembered.CanCollect)
             {
                 // 창 가장자리에서 잘려 보이던 옵션이 온전히 보이게 됐다
-                _options[index] = window[i];
-                added.Add(window[i].Text);
+                _options[index] = incoming;
+                added.Add(incoming.Text);
+            }
+            else if (!remembered.CanCollect && incoming.Compact.Length > remembered.Compact.Length)
+            {
+                // 아직 다 보이지는 않았지만 더 길게 보인다
+                _options[index] = incoming;
             }
         }
 
         return added;
     }
 
-    private sealed class PanelOption(string text)
+    private sealed class PanelOption(string text, bool canCollect)
     {
         public string Text { get; } = text;
 
         public string Compact { get; } = KeywordMatcher.RemoveWhitespace(text);
+
+        /// <summary>온전히 보이고 제대로 읽혀서 모아도 되는지(ParsedOption.CanCollect)</summary>
+        public bool CanCollect { get; } = canCollect;
 
         /// <summary>OCR이 같은 옵션을 조금 다르게 읽었거나, 한쪽이 창 가장자리에서 잘린 조각인지.</summary>
         public bool Matches(PanelOption other, double minSimilarity)

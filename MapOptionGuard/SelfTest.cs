@@ -35,7 +35,7 @@ internal static class SelfTest
                                 ?? throw new InvalidOperationException("Windows 한국어 OCR이 없습니다.");
             using var guard = new OptionGuard(config, scanner, OptionCollector.Load());
 
-            IReadOnlyList<string> lines;
+            IReadOnlyList<OcrTextLine> lines;
             string processName;
             Rectangle client;
             if (imagePath is not null)
@@ -65,7 +65,7 @@ internal static class SelfTest
                 client = game.GetClientScreenRect();
                 processName = game.ProcessName;
                 var optionRect = config.OptionRegion.ToScreen(client);
-                report.AppendLine($"게임 화면: {client} · 옵션 영역: {optionRect} · 초기화 버튼: {config.ResetButtonRegion.ToScreen(client)}");
+                report.AppendLine($"게임 화면: {client} · 옵션 영역: {optionRect} · 초기화 버튼: {config.ResetButtonRegion.ToScreen(client)} · 포탈 버튼: {config.PortalButtonRegion.ToScreen(client)}");
 
                 using var raw = ScreenCapture.Capture(optionRect);
                 var rawPath = Path.Combine(outputDir, "selftest_raw.png");
@@ -77,16 +77,17 @@ internal static class SelfTest
             var result = guard.Analyze(lines, processName, client);
             report.AppendLine($"상태: {result.State} · {result.Message}");
 
-            report.AppendLine().AppendLine("[OCR 줄]");
+            report.AppendLine().AppendLine("[OCR 줄] ◆: 글머리표를 찾은 줄, (아래 여백 없음): 다음 줄이 창 아래로 잘렸을 수 있음");
             foreach (var line in lines)
             {
-                report.AppendLine("  " + line);
+                report.AppendLine((line.StartsWithBullet ? "◆ " : "  ") + line.Text
+                                  + (line.HasSpaceBelow ? "" : "  (아래 여백 없음)"));
             }
 
             report.AppendLine().AppendLine("[옵션으로 나눈 결과]");
             foreach (var option in OptionLineParser.SplitOptions(lines, config.PanelAnchor, config.FuzzyMatch))
             {
-                report.AppendLine("  - " + option + (guard.IsRewardOption(option) ? "  (보상 옵션, 모으지 않음)" : ""));
+                report.AppendLine("  - " + option.Text + DescribeSkipReason(option, guard));
             }
 
             var preparedPath = Path.Combine(outputDir, "selftest_ocr.png");
@@ -106,5 +107,21 @@ internal static class SelfTest
         {
             File.WriteAllText(reportPath, report.ToString());
         }
+    }
+
+    // 이 옵션을 모으지 않는 이유. 모으는 옵션이면 빈 글자.
+    private static string DescribeSkipReason(ParsedOption option, OptionGuard guard)
+    {
+        if (guard.IsRewardOption(option.Text))
+        {
+            return "  (보상 옵션, 모으지 않음)";
+        }
+
+        if (!option.IsComplete)
+        {
+            return "  (창 위·아래에서 잘렸을 수 있음, 모으지 않음)";
+        }
+
+        return option.IsClean ? "" : "  (한글이 아닌 글자가 섞임, 모으지 않음)";
     }
 }

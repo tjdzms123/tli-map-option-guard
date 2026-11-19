@@ -26,117 +26,149 @@ namespace MapOptionGuard
         /// </summary>
         private void InitializeComponent()
         {
-            this.rootLayout = new System.Windows.Forms.TableLayoutPanel();
-            this.searchLayout = new System.Windows.Forms.TableLayoutPanel();
-            this.searchBox = new System.Windows.Forms.TextBox();
-            this.blockedOnlyCheckBox = new System.Windows.Forms.CheckBox();
-            this.optionListView = new System.Windows.Forms.ListView();
-            this.optionColumn = new System.Windows.Forms.ColumnHeader();
-            this.summaryLabel = new System.Windows.Forms.Label();
-            this.rootLayout.SuspendLayout();
-            this.searchLayout.SuspendLayout();
-            this.SuspendLayout();
-            //
+            rootLayout = new TableLayoutPanel();
+            searchLayout = new TableLayoutPanel();
+            searchBox = new TextBox();
+            blockedOnlyCheckBox = new CheckBox();
+            removeSelectedButton = new Button();
+            clearCollectedButton = new Button();
+            optionListView = new ListView();
+            optionColumn = new ColumnHeader();
+            summaryLabel = new Label();
+            rootLayout.SuspendLayout();
+            searchLayout.SuspendLayout();
+            SuspendLayout();
+            // 
             // rootLayout
-            //
-            this.rootLayout.ColumnCount = 1;
-            this.rootLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.rootLayout.Controls.Add(this.searchLayout, 0, 0);
-            this.rootLayout.Controls.Add(this.optionListView, 0, 1);
-            this.rootLayout.Controls.Add(this.summaryLabel, 0, 2);
-            this.rootLayout.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.rootLayout.Location = new System.Drawing.Point(0, 0);
-            this.rootLayout.Name = "rootLayout";
-            this.rootLayout.Padding = new System.Windows.Forms.Padding(8);
-            this.rootLayout.RowCount = 3;
-            this.rootLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            this.rootLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.rootLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            this.rootLayout.Size = new System.Drawing.Size(944, 601);
-            this.rootLayout.TabIndex = 0;
-            //
+            // 
+            rootLayout.ColumnCount = 1;
+            rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            rootLayout.Controls.Add(searchLayout, 0, 0);
+            rootLayout.Controls.Add(optionListView, 0, 1);
+            rootLayout.Controls.Add(summaryLabel, 0, 2);
+            rootLayout.Dock = DockStyle.Fill;
+            rootLayout.Location = new Point(0, 0);
+            rootLayout.Name = "rootLayout";
+            rootLayout.Padding = new Padding(8);
+            rootLayout.RowCount = 3;
+            rootLayout.RowStyles.Add(new RowStyle());
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            rootLayout.RowStyles.Add(new RowStyle());
+            rootLayout.Size = new Size(944, 601);
+            rootLayout.TabIndex = 0;
+            // 
             // searchLayout
-            //
-            this.searchLayout.AutoSize = true;
-            this.searchLayout.ColumnCount = 2;
-            this.searchLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.searchLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
-            this.searchLayout.Controls.Add(this.searchBox, 0, 0);
-            this.searchLayout.Controls.Add(this.blockedOnlyCheckBox, 1, 0);
-            this.searchLayout.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.searchLayout.Location = new System.Drawing.Point(11, 11);
-            this.searchLayout.Name = "searchLayout";
-            this.searchLayout.RowCount = 1;
-            this.searchLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
-            this.searchLayout.Size = new System.Drawing.Size(922, 31);
-            this.searchLayout.TabIndex = 0;
-            //
+            // 
+            searchLayout.AutoSize = true;
+            searchLayout.ColumnCount = 4;
+            searchLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            searchLayout.ColumnStyles.Add(new ColumnStyle());
+            searchLayout.ColumnStyles.Add(new ColumnStyle());
+            searchLayout.ColumnStyles.Add(new ColumnStyle());
+            searchLayout.Controls.Add(searchBox, 0, 0);
+            searchLayout.Controls.Add(blockedOnlyCheckBox, 1, 0);
+            searchLayout.Controls.Add(removeSelectedButton, 2, 0);
+            searchLayout.Controls.Add(clearCollectedButton, 3, 0);
+            searchLayout.Dock = DockStyle.Fill;
+            searchLayout.Location = new Point(11, 11);
+            searchLayout.Name = "searchLayout";
+            searchLayout.RowCount = 1;
+            searchLayout.RowStyles.Add(new RowStyle());
+            searchLayout.Size = new Size(922, 35);
+            searchLayout.TabIndex = 0;
+            // 
             // searchBox
-            //
-            this.searchBox.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.searchBox.Name = "searchBox";
-            this.searchBox.PlaceholderText = "검색 (띄어쓰기 무시)";
-            this.searchBox.Size = new System.Drawing.Size(770, 25);
-            this.searchBox.TabIndex = 0;
-            this.searchBox.TextChanged += new System.EventHandler(this.SearchBox_TextChanged);
-            //
+            // 
+            searchBox.Dock = DockStyle.Fill;
+            searchBox.Location = new Point(3, 3);
+            searchBox.Name = "searchBox";
+            searchBox.PlaceholderText = "검색 (띄어쓰기 무시)";
+            searchBox.Size = new Size(480, 25);
+            searchBox.TabIndex = 0;
+            searchBox.TextChanged += SearchBox_TextChanged;
+            // 
             // blockedOnlyCheckBox
-            //
-            this.blockedOnlyCheckBox.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.blockedOnlyCheckBox.AutoSize = true;
-            this.blockedOnlyCheckBox.Name = "blockedOnlyCheckBox";
-            this.blockedOnlyCheckBox.Size = new System.Drawing.Size(140, 23);
-            this.blockedOnlyCheckBox.TabIndex = 1;
-            this.blockedOnlyCheckBox.Text = "거르는 옵션만 보기";
-            this.blockedOnlyCheckBox.CheckedChanged += new System.EventHandler(this.BlockedOnlyCheckBox_CheckedChanged);
-            //
+            // 
+            blockedOnlyCheckBox.Anchor = AnchorStyles.Left;
+            blockedOnlyCheckBox.AutoSize = true;
+            blockedOnlyCheckBox.Location = new Point(489, 6);
+            blockedOnlyCheckBox.Name = "blockedOnlyCheckBox";
+            blockedOnlyCheckBox.Size = new Size(150, 23);
+            blockedOnlyCheckBox.TabIndex = 1;
+            blockedOnlyCheckBox.Text = "거르는 옵션만 보기";
+            blockedOnlyCheckBox.CheckedChanged += BlockedOnlyCheckBox_CheckedChanged;
+            // 
+            // removeSelectedButton
+            // 
+            removeSelectedButton.AutoSize = true;
+            removeSelectedButton.Location = new Point(645, 3);
+            removeSelectedButton.Name = "removeSelectedButton";
+            removeSelectedButton.Size = new Size(141, 29);
+            removeSelectedButton.TabIndex = 2;
+            removeSelectedButton.Text = "선택한 옵션 지우기";
+            removeSelectedButton.Click += RemoveSelectedButton_Click;
+            // 
+            // clearCollectedButton
+            // 
+            clearCollectedButton.AutoSize = true;
+            clearCollectedButton.Location = new Point(792, 3);
+            clearCollectedButton.Name = "clearCollectedButton";
+            clearCollectedButton.Size = new Size(127, 29);
+            clearCollectedButton.TabIndex = 3;
+            clearCollectedButton.Text = "모은 옵션 비우기";
+            clearCollectedButton.Click += ClearCollectedButton_Click;
+            // 
             // optionListView
-            //
-            this.optionListView.CheckBoxes = true;
-            this.optionListView.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
-            this.optionColumn});
-            this.optionListView.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.optionListView.FullRowSelect = true;
-            this.optionListView.GridLines = true;
-            this.optionListView.Name = "optionListView";
-            this.optionListView.Size = new System.Drawing.Size(922, 515);
-            this.optionListView.TabIndex = 1;
-            this.optionListView.UseCompatibleStateImageBehavior = false;
-            this.optionListView.View = System.Windows.Forms.View.Details;
-            this.optionListView.ItemChecked += new System.Windows.Forms.ItemCheckedEventHandler(this.OptionListView_ItemChecked);
-            this.optionListView.Resize += new System.EventHandler(this.OptionListView_Resize);
-            //
+            // 
+            optionListView.CheckBoxes = true;
+            optionListView.Columns.AddRange(new ColumnHeader[] { optionColumn });
+            optionListView.Dock = DockStyle.Fill;
+            optionListView.FullRowSelect = true;
+            optionListView.GridLines = true;
+            optionListView.LabelEdit = true;
+            optionListView.Location = new Point(11, 52);
+            optionListView.Name = "optionListView";
+            optionListView.Size = new Size(922, 510);
+            optionListView.TabIndex = 1;
+            optionListView.UseCompatibleStateImageBehavior = false;
+            optionListView.View = View.Details;
+            optionListView.AfterLabelEdit += OptionListView_AfterLabelEdit;
+            optionListView.ItemChecked += OptionListView_ItemChecked;
+            optionListView.KeyDown += OptionListView_KeyDown;
+            optionListView.Resize += OptionListView_Resize;
+            // 
             // optionColumn
-            //
-            this.optionColumn.Text = "옵션 (체크하면 거름)";
-            this.optionColumn.Width = 895;
-            //
+            // 
+            optionColumn.Text = "옵션 (체크하면 거름)";
+            optionColumn.Width = 895;
+            // 
             // summaryLabel
-            //
-            this.summaryLabel.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.summaryLabel.AutoSize = true;
-            this.summaryLabel.Margin = new System.Windows.Forms.Padding(3, 6, 3, 3);
-            this.summaryLabel.Name = "summaryLabel";
-            this.summaryLabel.Size = new System.Drawing.Size(0, 19);
-            this.summaryLabel.TabIndex = 2;
-            //
+            // 
+            summaryLabel.Anchor = AnchorStyles.Left;
+            summaryLabel.AutoSize = true;
+            summaryLabel.Location = new Point(11, 571);
+            summaryLabel.Margin = new Padding(3, 6, 3, 3);
+            summaryLabel.Name = "summaryLabel";
+            summaryLabel.Size = new Size(0, 19);
+            summaryLabel.TabIndex = 2;
+            // 
             // OptionPickerForm
-            //
-            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.ClientSize = new System.Drawing.Size(944, 601);
-            this.Controls.Add(this.rootLayout);
-            this.Font = new System.Drawing.Font("맑은 고딕", 10F);
-            this.MinimumSize = new System.Drawing.Size(560, 360);
-            this.Name = "OptionPickerForm";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "맵 옵션 가드 - 거를 옵션 선택";
-            this.Activated += new System.EventHandler(this.OptionPickerForm_Activated);
-            this.rootLayout.ResumeLayout(false);
-            this.rootLayout.PerformLayout();
-            this.searchLayout.ResumeLayout(false);
-            this.searchLayout.PerformLayout();
-            this.ResumeLayout(false);
+            // 
+            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            ClientSize = new Size(944, 601);
+            Controls.Add(rootLayout);
+            Font = new Font("맑은 고딕", 10F);
+            MinimumSize = new Size(560, 360);
+            Name = "OptionPickerForm";
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "맵 옵션 가드 - 거를 옵션 선택";
+            Activated += OptionPickerForm_Activated;
+            rootLayout.ResumeLayout(false);
+            rootLayout.PerformLayout();
+            searchLayout.ResumeLayout(false);
+            searchLayout.PerformLayout();
+            ResumeLayout(false);
         }
 
         #endregion
@@ -145,6 +177,8 @@ namespace MapOptionGuard
         private System.Windows.Forms.TableLayoutPanel searchLayout;
         private System.Windows.Forms.TextBox searchBox;
         private System.Windows.Forms.CheckBox blockedOnlyCheckBox;
+        private System.Windows.Forms.Button removeSelectedButton;
+        private System.Windows.Forms.Button clearCollectedButton;
         private System.Windows.Forms.ListView optionListView;
         private System.Windows.Forms.ColumnHeader optionColumn;
         private System.Windows.Forms.Label summaryLabel;

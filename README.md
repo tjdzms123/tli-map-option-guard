@@ -113,17 +113,21 @@ exe와 같은 폴더에 처음 실행할 때 만들어집니다.
 
 ## 코드 구조
 
+모든 파일은 `MapOptionGuard/` 아래에 있고, 네임스페이스는 폴더와 상관없이 `MapOptionGuard` 하나입니다.
+
 | 파일 | 역할 |
 | --- | --- |
-| `MainForm.cs` / `MainForm.Designer.cs` | 메인 창. 배치는 VS 디자이너(Designer.cs), 동작은 MainForm.cs |
-| `OptionPickerForm.cs` / `OptionPickerForm.Designer.cs` | 거를 옵션 선택 창. 위와 같은 방식 |
-| `CalibrationForm.cs`, `OverlayForm.cs` | 화면을 직접 그리는 창이라 디자이너 없이 코드로만 작성 |
-| `OptionGuard.cs` | 게임 창 찾기 → 캡처 → OCR → 옵션 수집 → 거르기 판정(화면 없음) |
-| `OptionScanner.cs` | 캡처 전처리(반전·밑줄 제거)와 Windows OCR |
-| `OptionLineParser.cs`, `OptionCollector.cs`, `KeywordMatcher.cs` | 옵션 나누기, 모으기, 키워드·비슷한 옵션 비교 |
-| `PanelOptionMemory.cs` | 스크롤하며 본 옵션 기억 |
-| `GameWindow.cs` | 제목·프로세스·크기로 게임 창 고르기 |
+| `Program.cs` | 시작점. 설정·수집 파일을 읽고 메인 창을 띄움 |
 | `SelfTest.cs` | 진단 모드 |
+| `Forms/MainForm.cs` / `MainForm.Designer.cs` | 메인 창. 배치는 VS 디자이너(Designer.cs), 동작은 MainForm.cs |
+| `Forms/OptionPickerForm.cs` / `OptionPickerForm.Designer.cs` | 거를 옵션 선택 창. 위와 같은 방식 |
+| `Forms/CalibrationForm.cs`, `Forms/OverlayForm.cs` | 화면을 직접 그리는 창이라 디자이너 없이 코드로만 작성 |
+| `Options/OptionGuard.cs` | 게임 창 찾기 → 캡처 → OCR → 옵션 수집 → 거르기 판정(화면 없음) |
+| `Options/OptionLineParser.cs`, `OptionCollector.cs`, `KeywordMatcher.cs` | 옵션 나누기, 모으기, 키워드·비슷한 옵션 비교 |
+| `Options/PanelOptionMemory.cs` | 스크롤하며 본 옵션 기억 |
+| `Ocr/OptionScanner.cs` | 캡처 전처리(반전·밑줄 제거)와 Windows OCR |
+| `Capture/GameWindow.cs`, `Capture/ScreenCapture.cs` | 제목·프로세스·크기로 게임 창 고르기, 화면 캡처 |
+| `Config/AppConfig.cs`, `Config/JsonFileStore.cs` | config.json 설정, JSON 파일 읽기·저장 |
 
 ## 진단 모드
 

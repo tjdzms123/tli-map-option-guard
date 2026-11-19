@@ -23,13 +23,13 @@
 ## 빌드와 실행
 
 ```bash
-dotnet run --project src/MapOptionGuard
+dotnet run --project MapOptionGuard
 ```
 
 exe 하나로 만들기:
 
 ```bash
-dotnet publish src/MapOptionGuard -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
+dotnet publish MapOptionGuard -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
 ```
 
 실행하면 메인 창이 뜹니다. 상태, 인식 결과, 설정이 모두 이 창에 있고, 창을 닫으면 프로그램이 끝납니다.

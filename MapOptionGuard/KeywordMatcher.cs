@@ -13,7 +13,7 @@ internal static class KeywordMatcher
         new(text.Where(c => !char.IsWhiteSpace(c)).ToArray());
 
     /// <summary>길이가 length인 글자를 비교할 때 다르게 읽혀도 같다고 볼 글자 수.</summary>
-    public static int AllowedMismatch(int length, bool fuzzy) =>
+    private static int AllowedMismatch(int length, bool fuzzy) =>
         fuzzy && length >= FuzzyMinLength ? Math.Max(1, length / CharsPerExtraMismatch) : 0;
 
     /// <param name="compactText">RemoveWhitespace를 거친 OCR 결과</param>
@@ -43,12 +43,52 @@ internal static class KeywordMatcher
         return false;
     }
 
-    /// <summary>띄어쓰기를 뺀 두 글자가 같은 길이이고 다른 글자 수가 허용치 이하인지.</summary>
-    public static bool AreNearlyEqual(string compactA, string compactB, int allowedMismatch) =>
-        compactA.Length == compactB.Length && CountMismatch(compactA, 0, compactB, allowedMismatch) <= allowedMismatch;
+    /// <summary>
+    /// 띄어쓰기를 뺀 두 글자가 같은 옵션으로 볼 만큼 비슷한지. 비슷한 정도는 1 - 편집 거리 / 긴 쪽 길이(0~1)이다.
+    /// OCR이 글자를 바꿔 읽거나 빼먹고 더 읽은 경우를 모두 같은 옵션으로 본다.
+    /// </summary>
+    public static bool IsSimilar(string compactA, string compactB, double minSimilarity)
+    {
+        int longer = Math.Max(compactA.Length, compactB.Length);
+        if (longer == 0)
+        {
+            return true;
+        }
+
+        // 길이 차이만으로도 기준에 못 미치면 편집 거리를 계산하지 않는다
+        // 1 - 0.8이 0.19999…로 계산되어 한 글자 덜 허용되지 않도록 아주 작은 값을 더한다
+        int maxDistance = (int)Math.Floor(longer * (1 - minSimilarity) + 1e-9);
+        return Math.Abs(compactA.Length - compactB.Length) <= maxDistance
+               && EditDistance(compactA, compactB) <= maxDistance;
+    }
 
     public static List<string> FindBlocked(string compactText, IEnumerable<string> keywords, bool fuzzy) =>
         keywords.Where(keyword => Contains(compactText, keyword, fuzzy)).ToList();
+
+    // 한 글자 바꾸기·넣기·빼기를 한 번으로 셀 때, a를 b로 바꾸는 데 드는 최소 횟수(레벤슈타인 거리)
+    private static int EditDistance(string a, string b)
+    {
+        var previous = new int[b.Length + 1];
+        var current = new int[b.Length + 1];
+        for (int j = 0; j <= b.Length; j++)
+        {
+            previous[j] = j;
+        }
+
+        for (int i = 1; i <= a.Length; i++)
+        {
+            current[0] = i;
+            for (int j = 1; j <= b.Length; j++)
+            {
+                int replace = previous[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1);
+                current[j] = Math.Min(replace, Math.Min(previous[j], current[j - 1]) + 1);
+            }
+
+            (previous, current) = (current, previous);
+        }
+
+        return previous[b.Length];
+    }
 
     // text[start..]와 key를 앞에서부터 비교해 다른 글자 수를 센다. limit를 넘으면 더 세지 않는다.
     private static int CountMismatch(string text, int start, string key, int limit)

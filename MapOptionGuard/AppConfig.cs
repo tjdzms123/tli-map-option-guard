@@ -39,6 +39,8 @@ internal sealed class AppConfig
     public List<string> BlockedKeywords { get; set; } = ["실명", "마비"];
     // 맵 보상(드롭 수량 등)이라 거를 옵션 후보로 모으지 않을 키워드
     public List<string> RewardKeywords { get; set; } = ["드롭 수량"];
+    // 띄어쓰기를 뺀 글자가 이 비율 이상 같으면 같은 옵션으로 본다(0.5~1.0). 모으기·스크롤 기억·거르기 판정에 쓴다.
+    public double SameOptionSimilarity { get; set; } = 0.8;
     public string BoxColor { get; set; } = "#FF2020";
     public int BoxThickness { get; set; } = 4;
     public bool CollectOptions { get; set; } = true;
@@ -88,6 +90,7 @@ internal sealed class AppConfig
         BoxColor ??= "#FF2020";
         IntervalMs = Math.Clamp(IntervalMs, 200, 5000);
         OcrScale = Math.Clamp(OcrScale, 1.0, 4.0);
+        SameOptionSimilarity = Math.Clamp(SameOptionSimilarity, 0.5, 1.0);
         BoxThickness = Math.Clamp(BoxThickness, 1, 20);
     }
 

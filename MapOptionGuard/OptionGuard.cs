@@ -34,6 +34,7 @@ internal sealed record ScanResult(
 internal sealed class OptionGuard : IDisposable
 {
     private readonly OptionScanner _scanner;
+    private readonly PanelOptionMemory _panelMemory = new();
     private AppConfig _config;
 
     public OptionGuard(AppConfig config, OptionScanner scanner, OptionCollector collector)
@@ -41,17 +42,17 @@ internal sealed class OptionGuard : IDisposable
         _scanner = scanner;
         Collector = collector;
         _config = config;
-        RemoveCollectedRewardOptions();
+        CleanUpCollectedOptions();
     }
 
-    /// <summary>바꾸면 이미 모아 둔 옵션 중 보상 옵션도 거를 옵션 후보에서 뺀다.</summary>
+    /// <summary>바꾸면 바뀐 설정에 맞춰 모아 둔 옵션도 정리한다(보상 옵션 빼기, 비슷한 옵션 합치기).</summary>
     public AppConfig Config
     {
         get => _config;
         set
         {
             _config = value;
-            RemoveCollectedRewardOptions();
+            CleanUpCollectedOptions();
         }
     }
 
@@ -85,6 +86,7 @@ internal sealed class OptionGuard : IDisposable
 
     /// <summary>
     /// OCR 줄로 옵션 창이 열렸는지 보고, 옵션을 모은 뒤 거를 옵션이 있는지 판정한다.
+    /// 옵션이 많으면 창을 내려야 다 보이므로, 이 옵션 창에서 스크롤하며 본 옵션도 기억해 함께 판정한다.
     /// 진단 모드가 저장해 둔 캡처 이미지를 읽을 때도 같은 판정을 쓴다.
     /// </summary>
     public ScanResult Analyze(IReadOnlyList<string> lines, string processName, Rectangle client)
@@ -101,11 +103,19 @@ internal sealed class OptionGuard : IDisposable
                 processName, client, ocrText, [], Rectangle.Empty);
         }
 
-        var collectError = config.CollectOptions ? TryCollect(lines, config) : null;
-        var blockRules = config.BlockedKeywords.Concat(Collector.GetBlockedTexts());
-        var blocked = KeywordMatcher.FindBlocked(compactText, blockRules, config.FuzzyMatch);
+        var visibleOptions = OptionLineParser.SplitOptions(lines, config.PanelAnchor, config.FuzzyMatch)
+            .Where(option => !IsRewardOption(option))
+            .ToList();
+        var newOptions = _panelMemory.Update(visibleOptions, config.SameOptionSimilarity);
+        var collectError = config.CollectOptions ? TryCollect(newOptions, config) : null;
+        var blocked = FindBlocked(compactText, visibleOptions, config);
 
         var message = blocked.Count > 0 ? "걸린 옵션: " + string.Join(", ", blocked) : "걸린 옵션 없음";
+        if (_panelMemory.Count > 0)
+        {
+            message += $" · 기억한 옵션 {_panelMemory.Count}개";
+        }
+
         if (collectError is not null)
         {
             message += " / 옵션 수집 실패: " + collectError;
@@ -129,18 +139,41 @@ internal sealed class OptionGuard : IDisposable
 
     public void Dispose() => _scanner.Dispose();
 
-    // 보상 키워드를 추가하기 전에 모아 둔 옵션도 목록에서 빠지도록 한다
-    private void RemoveCollectedRewardOptions() => Collector.RemoveUnblocked(IsRewardOption);
+    /// <summary>
+    /// 직접 적은 키워드는 글자가 들어 있는지로, 거르기로 고른 옵션은 비슷한 옵션이 있는지로 찾는다.
+    /// 지금 보이는 글자와 이 옵션 창에서 기억한 옵션을 함께 본다.
+    /// </summary>
+    private List<string> FindBlocked(string compactText, IReadOnlyList<string> visibleOptions, AppConfig config)
+    {
+        var searchText = compactText + "|" + _panelMemory.CompactText;
+        var seenOptions = visibleOptions.Select(KeywordMatcher.RemoveWhitespace)
+            .Concat(_panelMemory.CompactOptions)
+            .ToList();
+        var blockedOptions = Collector.GetBlockedTexts().Where(text =>
+        {
+            var compactBlocked = KeywordMatcher.RemoveWhitespace(text);
+            return KeywordMatcher.Contains(searchText, compactBlocked, config.FuzzyMatch)
+                   || seenOptions.Any(seen => KeywordMatcher.IsSimilar(seen, compactBlocked, config.SameOptionSimilarity));
+        });
+
+        return KeywordMatcher.FindBlocked(searchText, config.BlockedKeywords, config.FuzzyMatch)
+            .Concat(blockedOptions)
+            .ToList();
+    }
+
+    // 설정을 바꾸기 전에 모아 둔 옵션도 지금 설정(보상 키워드, 같은 옵션 기준)에 맞춘다
+    private void CleanUpCollectedOptions()
+    {
+        Collector.RemoveUnblocked(IsRewardOption);
+        Collector.MergeSimilar(_config.SameOptionSimilarity);
+    }
 
     // 수집 파일 저장이 실패해도 거르기 판정은 계속되도록 오류는 메시지로만 돌려준다
-    private string? TryCollect(IReadOnlyList<string> lines, AppConfig config)
+    private string? TryCollect(IReadOnlyList<string> newOptions, AppConfig config)
     {
         try
         {
-            var options = OptionLineParser.SplitOptions(lines, config.PanelAnchor, config.FuzzyMatch)
-                .Where(option => !IsRewardOption(option))
-                .ToList();
-            Collector.Record(options);
+            Collector.Record(newOptions, config.SameOptionSimilarity);
             return null;
         }
         catch (Exception ex)

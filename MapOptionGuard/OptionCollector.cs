@@ -19,18 +19,14 @@ internal sealed class SeenOption
 }
 
 /// <summary>
-/// 검사하면서 본 옵션을 중복 없이 모아 collected_options.json에 저장한다.
-/// 같은 옵션 창을 0.5초마다 다시 세지 않도록, 두 번 연속 같게 읽힌 새 옵션 창만 한 번 기록한다.
+/// 검사하면서 본 옵션을 모아 collected_options.json에 저장한다.
+/// OCR이 같은 옵션을 조금씩 다르게 읽으므로, 설정한 비율 이상 비슷하면 같은 옵션으로 보고 한 항목에 센다.
 /// </summary>
 internal sealed class OptionCollector
 {
-    // 숫자나 짧은 OCR 조각은 옵션으로 보지 않는다
-    private const int MinOptionLength = 4;
     private const string TimeFormat = "yyyy-MM-dd HH:mm";
 
     private readonly List<SeenOption> _options;
-    private string _previousSignature = "";
-    private string _recordedSignature = "";
 
     private OptionCollector(List<SeenOption> options, string? backupPath)
     {
@@ -79,34 +75,20 @@ internal sealed class OptionCollector
 
     public void Save() => JsonFileStore.Save(FilePath, _options);
 
-    /// <summary>옵션 창 하나에서 읽은 옵션들을 기록한다.</summary>
-    public void Record(IReadOnlyList<string> panelOptions)
+    /// <summary>
+    /// 옵션 창에서 처음 본 옵션들을 기록한다. 같은 옵션 창을 다시 세지 않도록 거르는 일은 PanelOptionMemory가 맡는다.
+    /// </summary>
+    public void Record(IReadOnlyList<string> newOptions, double minSimilarity)
     {
-        var candidates = panelOptions
-            .Select(text => (Text: text.Trim(), Compact: KeywordMatcher.RemoveWhitespace(text)))
-            .Where(option => option.Compact.Length >= MinOptionLength)
-            .ToList();
-        if (candidates.Count == 0)
+        if (newOptions.Count == 0)
         {
             return;
         }
 
-        var signature = string.Join("|", candidates.Select(o => o.Compact).Order(StringComparer.Ordinal));
-        bool isStable = signature == _previousSignature;
-        _previousSignature = signature;
-        if (!isStable || signature == _recordedSignature)
-        {
-            // 화면이 바뀌는 중이거나 이미 기록한 옵션 창
-            return;
-        }
-
-        _recordedSignature = signature;
         var now = DateTime.Now.ToString(TimeFormat);
-        foreach (var (text, compact) in candidates)
+        foreach (var text in newOptions.Select(option => option.Trim()))
         {
-            // OCR이 같은 옵션을 조금씩 다르게 읽어도 한 항목으로 모은다
-            int allowedMismatch = KeywordMatcher.AllowedMismatch(compact.Length, fuzzy: true);
-            var existing = _options.Find(o => KeywordMatcher.AreNearlyEqual(o.CompactText, compact, allowedMismatch));
+            var existing = FindSimilar(_options, KeywordMatcher.RemoveWhitespace(text), minSimilarity);
             if (existing is null)
             {
                 _options.Add(new SeenOption { Text = text, Count = 1, FirstSeen = now, LastSeen = now });
@@ -120,4 +102,41 @@ internal sealed class OptionCollector
 
         Save();
     }
+
+    /// <summary>
+    /// 비슷한 옵션이 따로 모여 있으면 한 항목으로 합친다. 본 횟수가 많은 쪽 글자를 남기고 횟수는 더한다.
+    /// 파일에는 다음 저장 때 반영된다.
+    /// </summary>
+    public void MergeSimilar(double minSimilarity)
+    {
+        var merged = new List<SeenOption>();
+        foreach (var option in _options.OrderByDescending(o => o.Count))
+        {
+            var same = FindSimilar(merged, option.CompactText, minSimilarity);
+            if (same is null)
+            {
+                merged.Add(option);
+                continue;
+            }
+
+            same.Count += option.Count;
+            same.Blocked |= option.Blocked;
+            // 시간은 yyyy-MM-dd HH:mm 형식이라 글자 순서가 곧 시간 순서다
+            if (option.FirstSeen.Length > 0 && string.CompareOrdinal(option.FirstSeen, same.FirstSeen) < 0)
+            {
+                same.FirstSeen = option.FirstSeen;
+            }
+
+            if (string.CompareOrdinal(option.LastSeen, same.LastSeen) > 0)
+            {
+                same.LastSeen = option.LastSeen;
+            }
+        }
+
+        _options.Clear();
+        _options.AddRange(merged);
+    }
+
+    private static SeenOption? FindSimilar(List<SeenOption> options, string compactText, double minSimilarity) =>
+        options.Find(o => KeywordMatcher.IsSimilar(o.CompactText, compactText, minSimilarity));
 }

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- Windows 내장 OCR(Windows.Media.Ocr)을 쓰기 위해 Windows SDK 버전을 지정한다 -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- 게임 창 좌표와 캡처 좌표를 실제 픽셀로 맞추기 위해 모니터별 DPI 인식 -->
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <AssemblyName>MapOptionGuard</AssemblyName>
+    <RootNamespace>MapOptionGuard</RootNamespace>
+  </PropertyGroup>
+
+</Project>

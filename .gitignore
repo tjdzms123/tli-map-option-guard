@@ -1,0 +1,9 @@
+bin/
+obj/
+publish/
+.vs/
+*.user
+
+# 실행 중 생성되는 개인 설정·디버그 파일
+config.json
+last_ocr.png

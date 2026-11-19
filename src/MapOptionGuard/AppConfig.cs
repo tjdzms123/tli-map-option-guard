@@ -1,0 +1,105 @@
+using System.Text.Encodings.Web;
+using System.Text.Json;
+
+namespace MapOptionGuard;
+
+/// <summary>
+/// 게임 창 클라이언트 영역 기준의 비율 좌표(0~1). 창 크기가 바뀌어도 같은 UI 위치를 가리킨다.
+/// </summary>
+internal sealed class RelativeRect
+{
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Width { get; set; }
+    public double Height { get; set; }
+
+    public Rectangle ToScreen(Rectangle client) => Rectangle.FromLTRB(
+        client.X + (int)Math.Round(X * client.Width),
+        client.Y + (int)Math.Round(Y * client.Height),
+        client.X + (int)Math.Round((X + Width) * client.Width),
+        client.Y + (int)Math.Round((Y + Height) * client.Height));
+
+    public static RelativeRect FromClient(Rectangle rect, Size clientSize) => new()
+    {
+        X = Math.Round((double)rect.X / clientSize.Width, 4),
+        Y = Math.Round((double)rect.Y / clientSize.Height, 4),
+        Width = Math.Round((double)rect.Width / clientSize.Width, 4),
+        Height = Math.Round((double)rect.Height / clientSize.Height, 4),
+    };
+}
+
+internal sealed class AppConfig
+{
+    public string WindowTitle { get; set; } = "Torchlight: Infinite";
+    public int IntervalMs { get; set; } = 500;
+    public double OcrScale { get; set; } = 2.0;
+    public bool FuzzyMatch { get; set; } = true;
+    public string PanelAnchor { get; set; } = "기본 옵션";
+    public RelativeRect OptionRegion { get; set; } = DefaultOptionRegion();
+    public RelativeRect ResetButtonRegion { get; set; } = DefaultResetButtonRegion();
+    public List<string> BlockedKeywords { get; set; } = ["실명", "마비"];
+    public string BoxColor { get; set; } = "#FF2020";
+    public int BoxThickness { get; set; } = 4;
+
+    public static string FilePath { get; } = Path.Combine(AppContext.BaseDirectory, "config.json");
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true,
+        // 한글을 \uXXXX 로 바꾸지 않고 그대로 저장해 직접 편집하기 쉽게 한다
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
+    /// <summary>설정 파일을 읽는다. 파일이 없으면 기본값으로 새로 만들고, 형식 오류는 예외로 올린다.</summary>
+    public static AppConfig LoadOrCreate()
+    {
+        if (!File.Exists(FilePath))
+        {
+            var created = new AppConfig();
+            created.Save();
+            return created;
+        }
+
+        var config = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(FilePath), JsonOptions)
+                     ?? throw new InvalidDataException("설정 파일이 비어 있습니다.");
+        config.Normalize();
+        return config;
+    }
+
+    public void Save() => File.WriteAllText(FilePath, JsonSerializer.Serialize(this, JsonOptions));
+
+    public Color GetBoxColor()
+    {
+        try
+        {
+            return ColorTranslator.FromHtml(BoxColor);
+        }
+        catch (Exception)
+        {
+            return Color.Red;
+        }
+    }
+
+    // 사용자가 값을 비우거나 범위를 벗어나게 적어도 동작하도록 보정한다
+    private void Normalize()
+    {
+        WindowTitle ??= "Torchlight: Infinite";
+        PanelAnchor ??= "";
+        OptionRegion ??= DefaultOptionRegion();
+        ResetButtonRegion ??= DefaultResetButtonRegion();
+        BlockedKeywords = BlockedKeywords?.Where(k => !string.IsNullOrWhiteSpace(k)).ToList() ?? [];
+        BoxColor ??= "#FF2020";
+        IntervalMs = Math.Clamp(IntervalMs, 200, 5000);
+        OcrScale = Math.Clamp(OcrScale, 1.0, 4.0);
+        BoxThickness = Math.Clamp(BoxThickness, 1, 20);
+    }
+
+    // 기본 좌표는 1920x1010 창 모드 스크린샷 기준 대략값이다. 트레이 메뉴의 '영역 설정'으로 맞추는 것을 권장한다.
+    private static RelativeRect DefaultOptionRegion() => new() { X = 0.038, Y = 0.270, Width = 0.172, Height = 0.418 };
+
+    private static RelativeRect DefaultResetButtonRegion() => new() { X = 0.042, Y = 0.714, Width = 0.079, Height = 0.034 };
+}

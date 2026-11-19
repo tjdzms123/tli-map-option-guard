@@ -5,7 +5,9 @@ namespace MapOptionGuard;
 /// <summary>
 /// 게임 화면 캡처 위에서 옵션 영역 → 초기화 버튼 순서로 드래그해 위치를 지정받는 창.
 /// 창은 게임 클라이언트 영역과 같은 위치·크기로 뜨므로 창 안 좌표가 곧 클라이언트 좌표다.
+/// 화면을 직접 그리는 창이라 VS에서 디자이너 대신 코드 보기로 열리게 한다.
 /// </summary>
+[System.ComponentModel.DesignerCategory("Code")]
 internal sealed class CalibrationForm : Form
 {
     private const int MinDragSize = 5;

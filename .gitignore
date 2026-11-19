@@ -6,4 +6,6 @@ publish/
 
 # 실행 중 생성되는 개인 설정·디버그 파일
 config.json
+collected_options*.json
 last_ocr.png
+*.tmp

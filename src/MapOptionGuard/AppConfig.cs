@@ -1,6 +1,3 @@
-using System.Text.Encodings.Web;
-using System.Text.Json;
-
 namespace MapOptionGuard;
 
 /// <summary>
@@ -31,6 +28,8 @@ internal sealed class RelativeRect
 internal sealed class AppConfig
 {
     public string WindowTitle { get; set; } = "Torchlight: Infinite";
+    // 같은 제목을 쓰는 도구 창(TTD 등)과 구분하기 위한 게임 프로세스 이름(.exe 제외). 비우면 확인하지 않는다.
+    public string ProcessName { get; set; } = "torchlight_infinite";
     public int IntervalMs { get; set; } = 500;
     public double OcrScale { get; set; } = 2.0;
     public bool FuzzyMatch { get; set; } = true;
@@ -40,19 +39,9 @@ internal sealed class AppConfig
     public List<string> BlockedKeywords { get; set; } = ["실명", "마비"];
     public string BoxColor { get; set; } = "#FF2020";
     public int BoxThickness { get; set; } = 4;
+    public bool CollectOptions { get; set; } = true;
 
     public static string FilePath { get; } = Path.Combine(AppContext.BaseDirectory, "config.json");
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-        // 한글을 \uXXXX 로 바꾸지 않고 그대로 저장해 직접 편집하기 쉽게 한다
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-    };
 
     /// <summary>설정 파일을 읽는다. 파일이 없으면 기본값으로 새로 만들고, 형식 오류는 예외로 올린다.</summary>
     public static AppConfig LoadOrCreate()
@@ -64,13 +53,13 @@ internal sealed class AppConfig
             return created;
         }
 
-        var config = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(FilePath), JsonOptions)
+        var config = JsonFileStore.Load<AppConfig>(FilePath)
                      ?? throw new InvalidDataException("설정 파일이 비어 있습니다.");
         config.Normalize();
         return config;
     }
 
-    public void Save() => File.WriteAllText(FilePath, JsonSerializer.Serialize(this, JsonOptions));
+    public void Save() => JsonFileStore.Save(FilePath, this);
 
     public Color GetBoxColor()
     {
@@ -88,6 +77,7 @@ internal sealed class AppConfig
     private void Normalize()
     {
         WindowTitle ??= "Torchlight: Infinite";
+        ProcessName = NormalizeProcessName(ProcessName);
         PanelAnchor ??= "";
         OptionRegion ??= DefaultOptionRegion();
         ResetButtonRegion ??= DefaultResetButtonRegion();
@@ -98,7 +88,14 @@ internal sealed class AppConfig
         BoxThickness = Math.Clamp(BoxThickness, 1, 20);
     }
 
-    // 기본 좌표는 1920x1010 창 모드 스크린샷 기준 대략값이다. 트레이 메뉴의 '영역 설정'으로 맞추는 것을 권장한다.
+    /// <summary>앞뒤 공백과 끝의 .exe를 떼어 Process.ProcessName과 비교할 수 있는 형태로 만든다.</summary>
+    public static string NormalizeProcessName(string? processName)
+    {
+        var name = processName?.Trim() ?? "";
+        return name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? name[..^4] : name;
+    }
+
+    // 기본 좌표는 1920x1010 창 모드 스크린샷 기준 대략값이다. 메인 창의 '영역 설정'으로 맞추는 것을 권장한다.
     private static RelativeRect DefaultOptionRegion() => new() { X = 0.038, Y = 0.270, Width = 0.172, Height = 0.418 };
 
     private static RelativeRect DefaultResetButtonRegion() => new() { X = 0.042, Y = 0.714, Width = 0.079, Height = 0.034 };

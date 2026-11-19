@@ -4,7 +4,9 @@ namespace MapOptionGuard;
 
 /// <summary>
 /// 초기화 버튼 위에 네모와 사유를 그리는 투명 창. 클릭은 아래 게임으로 그대로 통과한다.
+/// 화면을 직접 그리는 창이라 VS에서 디자이너 대신 코드 보기로 열리게 한다.
 /// </summary>
+[System.ComponentModel.DesignerCategory("Code")]
 internal sealed class OverlayForm : Form
 {
     private const int WS_EX_TOPMOST = 0x00000008;
@@ -13,6 +15,8 @@ internal sealed class OverlayForm : Form
     private const int WS_EX_LAYERED = 0x00080000;
     private const int WS_EX_NOACTIVATE = 0x08000000;
     private const int BoxPadding = 6;
+    // 거르기로 고른 옵션은 문장이 길어서 라벨에는 앞부분만 보여 준다
+    private const int MaxReasonLength = 16;
     private static readonly Color KeyColor = Color.Magenta;
 
     private Color _boxColor;
@@ -58,7 +62,7 @@ internal sealed class OverlayForm : Form
     /// <summary>버튼 영역(화면 좌표)을 감싸는 네모와, 그 아래에 걸린 키워드를 표시한다.</summary>
     public void ShowAround(Rectangle buttonRect, IReadOnlyList<string> reasons)
     {
-        var label = "초기화 권장: " + string.Join(", ", reasons);
+        var label = "초기화 권장: " + string.Join(", ", reasons.Select(Shorten));
         var textSize = TextRenderer.MeasureText(label, Font);
         var boxRect = new Rectangle(0, 0, buttonRect.Width + BoxPadding * 2, buttonRect.Height + BoxPadding * 2);
         var labelRect = new Rectangle(0, boxRect.Bottom, textSize.Width + 12, textSize.Height + 6);
@@ -89,6 +93,9 @@ internal sealed class OverlayForm : Form
             Invalidate();
         }
     }
+
+    private static string Shorten(string reason) =>
+        reason.Length <= MaxReasonLength ? reason : reason[..MaxReasonLength] + "…";
 
     public void HideBox()
     {
